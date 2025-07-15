@@ -1,0 +1,45 @@
+Tạo một ứng dụng web chống lừa đảo với frontend bằng Next.js + TailwindCSS và backend bằng Node.js + Express. Ứng dụng gồm 4 tính năng chính sau:
+
+---
+
+1. **Tìm kiếm thông tin lừa đảo**:
+- Form nhập: số điện thoại, số tài khoản ngân hàng hoặc link nghi ngờ lừa đảo.
+- Sau khi tìm kiếm, hiển thị bảng kết quả (table) gồm: tên người bị tố cáo, số tài khoản, ngân hàng, số điện thoại, số tiền bị lừa, ngày tố cáo.
+- Khi click vào từng dòng sẽ điều hướng sang trang chi tiết tố cáo.
+- Thiết kế tương tự như giao diện trang checkscam.com.
+
+---
+
+2. **Chức năng tố cáo**:
+- Form gồm các trường: tên người lừa đảo, số tài khoản, ngân hàng, số điện thoại, số tiền chiếm đoạt, mô tả vụ việc, đính kèm ảnh biên lai (file upload).
+- Gửi dữ liệu qua API backend Node.js/Express, lưu trữ vào MongoDB hoặc JSON file (tuỳ chọn).
+- Có thể thêm trường “ẩn danh” nếu người dùng không muốn công khai.
+
+---
+
+3. **Trang blog chia sẻ thủ đoạn lừa đảo**:
+- Cho phép đăng bài viết dạng blog về các thủ đoạn lừa đảo phổ biến.
+- Trang hiển thị danh sách các bài viết có tiêu đề, ảnh cover, tóm tắt nội dung.
+- Trang chi tiết bài viết có thể truy cập theo slug.
+- Cho phép tìm kiếm bài viết theo từ khoá hoặc tag.
+
+---
+
+4. **Chatbox hỗ trợ người dùng**:
+- Chatbox nằm ở góc phải màn hình, có thể thu gọn/mở rộng.
+- Cho phép người dùng gửi tin nhắn đến AI agent (tích hợp dummy AI hoặc OpenAI API).
+- Thêm 2 nút: “Chat qua Zalo” và “Chat Facebook Messenger”.
+   - Nút Zalo mở link: `https://zalo.me/<OA_ID>`
+   - Nút Messenger mở: `https://m.me/<PAGE_ID>`
+
+---
+
+💡 Yêu cầu khác:
+- Giao diện hiện đại, responsive, dùng TailwindCSS.
+- Có routing bằng Next.js (`/search`, `/report`, `/blogs`, `/blogs/[slug]`, `/detail/[id]`...).
+- API backend Node.js/Express tách riêng, có endpoint như: `POST /report`, `GET /search`, `GET /detail/:id`, `GET /blogs`, `POST /blogs`.
+- Giao tiếp frontend-backend bằng fetch hoặc Axios.
+
+---
+
+🎁 Bonus: Nếu có thể, tạo thêm file `README.md` hướng dẫn cài đặt và chạy project trên Replit hoặc local máy.
