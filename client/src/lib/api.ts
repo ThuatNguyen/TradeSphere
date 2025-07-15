@@ -41,8 +41,8 @@ export const api = {
   },
 
   // Chat
-  sendChatMessage: async (message: string) => {
-    const response = await apiRequest("POST", "/api/chat", { message });
+  sendChatMessage: async (message: string, sessionId?: string) => {
+    const response = await apiRequest("POST", "/api/chat", { message, sessionId });
     return response.json();
   },
 };

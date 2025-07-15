@@ -12,6 +12,9 @@ import BlogsPage from "@/pages/blogs";
 import BlogDetail from "@/pages/blog-detail";
 import Detail from "@/pages/detail";
 import NotFound from "@/pages/not-found";
+import AdminLogin from "@/pages/admin/login";
+import AdminDashboard from "@/pages/admin/dashboard";
+import ChatDetail from "@/pages/admin/chat-detail";
 
 function Router() {
   return (
@@ -20,8 +23,11 @@ function Router() {
       <Route path="/search" component={SearchPage} />
       <Route path="/report" component={ReportPage} />
       <Route path="/blogs" component={BlogsPage} />
-      <Route path="/blogs/:slug" component={BlogDetail} />
+      <Route path="/blog-detail/:slug" component={BlogDetail} />
       <Route path="/detail/:id" component={Detail} />
+      <Route path="/admin/login" component={AdminLogin} />
+      <Route path="/admin/dashboard" component={AdminDashboard} />
+      <Route path="/admin/chat/:sessionId" component={ChatDetail} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -31,10 +37,17 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Layout>
-          <Router />
-        </Layout>
-        <Chatbox />
+        <Switch>
+          <Route path="/admin/*" nest>
+            <Router />
+          </Route>
+          <Route>
+            <Layout>
+              <Router />
+            </Layout>
+            <Chatbox />
+          </Route>
+        </Switch>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

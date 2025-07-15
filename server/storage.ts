@@ -1,6 +1,12 @@
-import { users, reports, blogPosts, type User, type InsertUser, type Report, type InsertReport, type BlogPost, type InsertBlogPost } from "@shared/schema";
+import { 
+  users, reports, blogPosts, admins, chatSessions, chatMessages,
+  type User, type InsertUser, type Report, type InsertReport, 
+  type BlogPost, type InsertBlogPost, type UpdateBlogPost,
+  type Admin, type InsertAdmin, type ChatSession, type InsertChatSession,
+  type ChatMessage, type InsertChatMessage
+} from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, ilike, desc, asc } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -12,6 +18,9 @@ export interface IStorage {
   getReport(id: number): Promise<Report | undefined>;
   searchReports(query: string): Promise<Report[]>;
   getRecentReports(limit?: number): Promise<Report[]>;
+  getAllReports(limit?: number, offset?: number): Promise<Report[]>;
+  updateReport(id: number, data: Partial<Report>): Promise<Report>;
+  deleteReport(id: number): Promise<void>;
   
   // Blog operations
   createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
@@ -19,6 +28,20 @@ export interface IStorage {
   getBlogPostBySlug(slug: string): Promise<BlogPost | undefined>;
   getAllBlogPosts(search?: string): Promise<BlogPost[]>;
   updateBlogPostViews(id: number): Promise<void>;
+  updateBlogPost(id: number, data: UpdateBlogPost): Promise<BlogPost>;
+  deleteBlogPost(id: number): Promise<void>;
+  
+  // Admin operations
+  createAdmin(admin: InsertAdmin): Promise<Admin>;
+  getAdmin(id: number): Promise<Admin | undefined>;
+  getAdminByUsername(username: string): Promise<Admin | undefined>;
+  
+  // Chat operations
+  createChatSession(session: InsertChatSession): Promise<ChatSession>;
+  getChatSession(sessionId: string): Promise<ChatSession | undefined>;
+  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  getChatMessages(sessionId: string, limit?: number): Promise<ChatMessage[]>;
+  getAllChatSessions(limit?: number): Promise<ChatSession[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -62,27 +85,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchReports(query: string): Promise<Report[]> {
-    if (!query) {
-      const allReports = await db.select().from(reports).limit(10);
-      return allReports;
-    }
+    const searchLower = query.toLowerCase().trim();
+    const allReports = await db.select().from(reports).orderBy(desc(reports.createdAt));
     
-    const searchResults = await db.select().from(reports);
-    return searchResults.filter(report => 
+    return allReports.filter(report => 
+      report.accusedName.toLowerCase().includes(searchLower) ||
       report.phoneNumber.includes(query) ||
-      report.accountNumber?.includes(query) ||
-      report.accusedName.toLowerCase().includes(query.toLowerCase()) ||
-      report.description.toLowerCase().includes(query.toLowerCase())
+      (report.accountNumber && report.accountNumber.includes(query))
     );
   }
 
   async getRecentReports(limit = 6): Promise<Report[]> {
-    const recentReports = await db
-      .select()
-      .from(reports)
-      .orderBy(reports.createdAt)
+    return await db.select().from(reports)
+      .orderBy(desc(reports.createdAt))
       .limit(limit);
-    return recentReports.reverse();
+  }
+
+  async getAllReports(limit = 50, offset = 0): Promise<Report[]> {
+    return await db.select().from(reports)
+      .orderBy(desc(reports.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async updateReport(id: number, data: Partial<Report>): Promise<Report> {
+    const [report] = await db
+      .update(reports)
+      .set(data)
+      .where(eq(reports.id, id))
+      .returning();
+    return report;
+  }
+
+  async deleteReport(id: number): Promise<void> {
+    await db.delete(reports).where(eq(reports.id, id));
   }
 
   async createBlogPost(insertPost: InsertBlogPost): Promise<BlogPost> {
@@ -109,20 +145,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllBlogPosts(search?: string): Promise<BlogPost[]> {
-    const allPosts = await db.select().from(blogPosts).orderBy(blogPosts.createdAt);
+    const allPosts = await db.select().from(blogPosts).orderBy(desc(blogPosts.createdAt));
     
     if (!search) {
-      return allPosts.reverse();
+      return allPosts;
     }
     
     const searchLower = search.toLowerCase();
-    return allPosts
-      .filter(post => 
-        post.title.toLowerCase().includes(searchLower) ||
-        post.excerpt.toLowerCase().includes(searchLower) ||
-        post.tags?.some(tag => tag.toLowerCase().includes(searchLower))
-      )
-      .reverse();
+    return allPosts.filter(post => 
+      post.title.toLowerCase().includes(searchLower) ||
+      post.excerpt.toLowerCase().includes(searchLower) ||
+      post.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+    );
   }
 
   async updateBlogPostViews(id: number): Promise<void> {
@@ -134,204 +168,70 @@ export class DatabaseStorage implements IStorage {
         .where(eq(blogPosts.id, id));
     }
   }
-}
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private reports: Map<number, Report>;
-  private blogPosts: Map<number, BlogPost>;
-  private currentUserId: number;
-  private currentReportId: number;
-  private currentBlogId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.reports = new Map();
-    this.blogPosts = new Map();
-    this.currentUserId = 1;
-    this.currentReportId = 1;
-    this.currentBlogId = 1;
-    
-    // Initialize with some sample blog posts
-    this.initializeSampleData();
-  }
-
-  private initializeSampleData() {
-    // Add sample reports
-    const sampleReports: InsertReport[] = [
-      {
-        accusedName: "Nguyễn Văn A",
-        phoneNumber: "0123456789",
-        accountNumber: "1234567890123",
-        bank: "vietcombank",
-        amount: 5000000,
-        description: "Lừa đảo qua Facebook bằng cách giả mạo bán hàng online. Đã chuyển tiền nhưng không nhận được hàng và bị chặn liên lạc.",
-        isAnonymous: false,
-        reporterName: "Trần Thị B",
-        reporterPhone: "0987654321"
-      },
-      {
-        accusedName: "Lê Minh C",
-        phoneNumber: "0987123456",
-        accountNumber: "9876543210987",
-        bank: "techcombank",
-        amount: 10000000,
-        description: "Lừa đảo đầu tư tiền ảo với lời hứa lợi nhuận cao. Sau khi chuyển tiền không thể rút được và mất liên lạc.",
-        isAnonymous: true,
-        reporterName: null,
-        reporterPhone: null
-      },
-      {
-        accusedName: "Phạm Văn D",
-        phoneNumber: "0369852147",
-        accountNumber: null,
-        bank: null,
-        amount: 2000000,
-        description: "Lừa đảo qua tin nhắn giả mạo ngân hàng yêu cầu cập nhật thông tin và lấy mã OTP.",
-        isAnonymous: false,
-        reporterName: "Hoàng Thị E",
-        reporterPhone: "0912345678"
-      }
-    ];
-
-    sampleReports.forEach(report => this.createReport(report));
-
-    const sampleBlogs: InsertBlogPost[] = [
-      {
-        title: "10 thủ đoạn lừa đảo phổ biến nhất năm 2024",
-        slug: "10-thu-doan-lua-dao-pho-bien-nhat-2024",
-        excerpt: "Cập nhật những phương thức lừa đảo mới nhất mà các kẻ xấu đang sử dụng để chiếm đoạt tài sản của người dân. Từ việc giả mạo ngân hàng đến lừa đảo đầu tư...",
-        content: "Nội dung chi tiết về các thủ đoạn lừa đảo phổ biến năm 2024...",
-        coverImage: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3",
-        tags: ["lừa đảo online", "phòng chống", "cảnh báo"],
-        readTime: 8,
-      },
-      {
-        title: "Cách nhận biết tin nhắn lừa đảo từ ngân hàng",
-        slug: "cach-nhan-biet-tin-nhan-lua-dao-tu-ngan-hang",
-        excerpt: "Hướng dẫn chi tiết cách phân biệt tin nhắn thật và giả từ ngân hàng để tránh bị lừa đảo...",
-        content: "Hướng dẫn chi tiết về cách nhận biết tin nhắn lừa đảo...",
-        coverImage: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?ixlib=rb-4.0.3",
-        tags: ["ngân hàng", "tin nhắn", "phòng chống"],
-        readTime: 5,
-      },
-      {
-        title: "Lừa đảo qua mạng xã hội: Cách thức và phòng tránh",
-        slug: "lua-dao-qua-mang-xa-hoi-cach-thuc-va-phong-tranh",
-        excerpt: "Phân tích các hình thức lừa đảo phổ biến trên Facebook, Zalo và cách bảo vệ bản thân...",
-        content: "Chi tiết về lừa đảo qua mạng xã hội...",
-        coverImage: "https://images.unsplash.com/photo-1611224923853-80b023f02d71?ixlib=rb-4.0.3",
-        tags: ["mạng xã hội", "facebook", "zalo"],
-        readTime: 7,
-      }
-    ];
-
-    sampleBlogs.forEach(blog => this.createBlogPost(blog));
-  }
-
-  async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
-  }
-
-  async createReport(insertReport: InsertReport): Promise<Report> {
-    const id = this.currentReportId++;
-    const report: Report = { 
-      ...insertReport,
-      id, 
-      createdAt: new Date(),
-      accountNumber: insertReport.accountNumber || null,
-      bank: insertReport.bank || null,
-      isAnonymous: insertReport.isAnonymous || false,
-      reporterName: insertReport.reporterName || null,
-      reporterPhone: insertReport.reporterPhone || null,
-      receiptUrl: null
-    };
-    this.reports.set(id, report);
-    return report;
-  }
-
-  async getReport(id: number): Promise<Report | undefined> {
-    return this.reports.get(id);
-  }
-
-  async searchReports(query: string): Promise<Report[]> {
-    const allReports = Array.from(this.reports.values());
-    if (!query) return allReports.slice(0, 10);
-    
-    const searchLower = query.toLowerCase();
-    return allReports.filter(report => 
-      report.phoneNumber.includes(query) ||
-      report.accountNumber?.includes(query) ||
-      report.accusedName.toLowerCase().includes(searchLower) ||
-      report.description.toLowerCase().includes(searchLower)
-    );
-  }
-
-  async getRecentReports(limit = 6): Promise<Report[]> {
-    const allReports = Array.from(this.reports.values());
-    return allReports
-      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
-      .slice(0, limit);
-  }
-
-  async createBlogPost(insertPost: InsertBlogPost): Promise<BlogPost> {
-    const id = this.currentBlogId++;
-    const post: BlogPost = { 
-      ...insertPost, 
-      id, 
-      views: 0,
-      createdAt: new Date(),
-      coverImage: insertPost.coverImage || null,
-      tags: insertPost.tags || null,
-      readTime: insertPost.readTime || 5
-    };
-    this.blogPosts.set(id, post);
+  async updateBlogPost(id: number, data: UpdateBlogPost): Promise<BlogPost> {
+    const [post] = await db
+      .update(blogPosts)
+      .set(data)
+      .where(eq(blogPosts.id, id))
+      .returning();
     return post;
   }
 
-  async getBlogPost(id: number): Promise<BlogPost | undefined> {
-    return this.blogPosts.get(id);
+  async deleteBlogPost(id: number): Promise<void> {
+    await db.delete(blogPosts).where(eq(blogPosts.id, id));
   }
 
-  async getBlogPostBySlug(slug: string): Promise<BlogPost | undefined> {
-    return Array.from(this.blogPosts.values()).find(post => post.slug === slug);
+  async createAdmin(insertAdmin: InsertAdmin): Promise<Admin> {
+    const [admin] = await db
+      .insert(admins)
+      .values(insertAdmin)
+      .returning();
+    return admin;
   }
 
-  async getAllBlogPosts(search?: string): Promise<BlogPost[]> {
-    const allPosts = Array.from(this.blogPosts.values());
-    if (!search) {
-      return allPosts.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
-    }
-    
-    const searchLower = search.toLowerCase();
-    return allPosts
-      .filter(post => 
-        post.title.toLowerCase().includes(searchLower) ||
-        post.excerpt.toLowerCase().includes(searchLower) ||
-        post.tags?.some(tag => tag.toLowerCase().includes(searchLower))
-      )
-      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+  async getAdmin(id: number): Promise<Admin | undefined> {
+    const [admin] = await db.select().from(admins).where(eq(admins.id, id));
+    return admin || undefined;
   }
 
-  async updateBlogPostViews(id: number): Promise<void> {
-    const post = this.blogPosts.get(id);
-    if (post) {
-      post.views = (post.views || 0) + 1;
-      this.blogPosts.set(id, post);
-    }
+  async getAdminByUsername(username: string): Promise<Admin | undefined> {
+    const [admin] = await db.select().from(admins).where(eq(admins.username, username));
+    return admin || undefined;
+  }
+
+  async createChatSession(insertSession: InsertChatSession): Promise<ChatSession> {
+    const [session] = await db
+      .insert(chatSessions)
+      .values(insertSession)
+      .returning();
+    return session;
+  }
+
+  async getChatSession(sessionId: string): Promise<ChatSession | undefined> {
+    const [session] = await db.select().from(chatSessions).where(eq(chatSessions.sessionId, sessionId));
+    return session || undefined;
+  }
+
+  async createChatMessage(insertMessage: InsertChatMessage): Promise<ChatMessage> {
+    const [message] = await db
+      .insert(chatMessages)
+      .values(insertMessage)
+      .returning();
+    return message;
+  }
+
+  async getChatMessages(sessionId: string, limit = 100): Promise<ChatMessage[]> {
+    return await db.select().from(chatMessages)
+      .where(eq(chatMessages.sessionId, sessionId))
+      .orderBy(asc(chatMessages.timestamp))
+      .limit(limit);
+  }
+
+  async getAllChatSessions(limit = 100): Promise<ChatSession[]> {
+    return await db.select().from(chatSessions)
+      .orderBy(desc(chatSessions.createdAt))
+      .limit(limit);
   }
 }
 

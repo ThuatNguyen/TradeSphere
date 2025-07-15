@@ -1,11 +1,12 @@
 import { db } from "./db";
-import { reports, blogPosts } from "@shared/schema";
+import { reports, blogPosts, admins } from "@shared/schema";
 
 export async function initializeDatabase() {
   try {
     // Check if data already exists
     const existingReports = await db.select().from(reports).limit(1);
     const existingBlogs = await db.select().from(blogPosts).limit(1);
+    const existingAdmins = await db.select().from(admins).limit(1);
     
     if (existingReports.length === 0) {
       // Add sample reports
@@ -85,6 +86,18 @@ export async function initializeDatabase() {
         }
       ]);
       console.log("✓ Sample blog posts added to database");
+    }
+
+    if (existingAdmins.length === 0) {
+      // Add default admin account
+      await db.insert(admins).values([
+        {
+          username: "admin",
+          password: "admin123", // Note: In production, this should be hashed
+          role: "admin"
+        }
+      ]);
+      console.log("✓ Default admin account created (username: admin, password: admin123)");
     }
 
     console.log("✓ Database initialization completed");

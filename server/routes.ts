@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertReportSchema, insertBlogPostSchema } from "@shared/schema";
+import { insertReportSchema, insertBlogPostSchema, insertAdminSchema, insertChatSessionSchema, insertChatMessageSchema, updateBlogPostSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -119,8 +119,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Chat endpoint (enhanced responses)
   app.post("/api/chat", async (req, res) => {
     try {
-      const { message } = req.body;
+      const { message, sessionId } = req.body;
       const messageText = message.toLowerCase();
+      
+      // Save user message to database if sessionId provided
+      if (sessionId) {
+        try {
+          // Create or get session
+          let session = await storage.getChatSession(sessionId);
+          if (!session) {
+            session = await storage.createChatSession({
+              sessionId,
+              userAgent: req.headers['user-agent'] || null,
+              ipAddress: req.ip || null
+            });
+          }
+          
+          // Save user message
+          await storage.createChatMessage({
+            sessionId,
+            message,
+            isUser: true
+          });
+        } catch (dbError) {
+          console.error("Chat DB error:", dbError);
+        }
+      }
       
       let response = "Xin chào! Tôi là AI hỗ trợ phòng chống lừa đảo. Bạn có thể chia sẻ thông tin nghi ngờ hoặc hỏi cách phòng tránh lừa đảo.";
       
@@ -143,9 +167,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
         response = "📞 KIỂM TRA SỐ ĐIỆN THOẠI:\n\n• Sử dụng tính năng tìm kiếm trên trang chủ\n• Kiểm tra trong cơ sở dữ liệu tố cáo\n• Tra cứu trên các diễn đàn uy tín\n• Cảnh giác nếu số lạ gọi về tài chính\n\nHãy tìm kiếm số điện thoại đó ngay!";
       }
       
+      // Save AI response to database if sessionId provided
+      if (sessionId) {
+        try {
+          await storage.createChatMessage({
+            sessionId,
+            message: response,
+            isUser: false
+          });
+        } catch (dbError) {
+          console.error("Chat DB save error:", dbError);
+        }
+      }
+      
       res.json({ response });
     } catch (error) {
       res.status(500).json({ error: "Failed to process chat message" });
+    }
+  });
+
+  // ========== ADMIN ROUTES ==========
+  
+  // Admin login
+  app.post("/api/admin/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      const admin = await storage.getAdminByUsername(username);
+      
+      if (!admin || admin.password !== password) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      
+      res.json({ admin: { id: admin.id, username: admin.username, role: admin.role } });
+    } catch (error) {
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  // Admin - Get all reports with pagination
+  app.get("/api/admin/reports", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+      const reports = await storage.getAllReports(limit, offset);
+      res.json(reports);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get reports" });
+    }
+  });
+
+  // Admin - Update report
+  app.put("/api/admin/reports/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+      const report = await storage.updateReport(id, updateData);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update report" });
+    }
+  });
+
+  // Admin - Delete report
+  app.delete("/api/admin/reports/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteReport(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete report" });
+    }
+  });
+
+  // Admin - Update blog post
+  app.put("/api/admin/blogs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = updateBlogPostSchema.parse(req.body);
+      const post = await storage.updateBlogPost(id, validatedData);
+      res.json(post);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update blog post" });
+      }
+    }
+  });
+
+  // Admin - Delete blog post
+  app.delete("/api/admin/blogs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteBlogPost(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete blog post" });
+    }
+  });
+
+  // Admin - Get all chat sessions
+  app.get("/api/admin/chat/sessions", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const sessions = await storage.getAllChatSessions(limit);
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get chat sessions" });
+    }
+  });
+
+  // Admin - Get chat messages for a session
+  app.get("/api/admin/chat/sessions/:sessionId/messages", async (req, res) => {
+    try {
+      const sessionId = req.params.sessionId;
+      const limit = parseInt(req.query.limit as string) || 100;
+      const messages = await storage.getChatMessages(sessionId, limit);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get chat messages" });
     }
   });
 

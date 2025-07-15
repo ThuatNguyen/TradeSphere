@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MessageCircle, X, Send, Bot, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { ChatMessage } from "@/lib/types";
 
 export default function Chatbox() {
   const [isOpen, setIsOpen] = useState(false);
+  const [sessionId, setSessionId] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "1",
@@ -18,8 +19,16 @@ export default function Chatbox() {
   ]);
   const [inputMessage, setInputMessage] = useState("");
 
+  // Generate unique session ID
+  useEffect(() => {
+    const generateSessionId = () => {
+      return `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    };
+    setSessionId(generateSessionId());
+  }, []);
+
   const chatMutation = useMutation({
-    mutationFn: api.sendChatMessage,
+    mutationFn: (message: string) => api.sendChatMessage(message, sessionId),
     onSuccess: (data) => {
       const aiMessage: ChatMessage = {
         id: Date.now().toString() + "-ai",
@@ -32,7 +41,7 @@ export default function Chatbox() {
   });
 
   const handleSendMessage = () => {
-    if (!inputMessage.trim()) return;
+    if (!inputMessage.trim() || !sessionId) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
