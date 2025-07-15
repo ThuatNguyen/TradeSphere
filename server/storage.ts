@@ -1,4 +1,6 @@
 import { users, reports, blogPosts, type User, type InsertUser, type Report, type InsertReport, type BlogPost, type InsertBlogPost } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -17,6 +19,121 @@ export interface IStorage {
   getBlogPostBySlug(slug: string): Promise<BlogPost | undefined>;
   getAllBlogPosts(search?: string): Promise<BlogPost[]>;
   updateBlogPostViews(id: number): Promise<void>;
+}
+
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async createReport(insertReport: InsertReport): Promise<Report> {
+    const [report] = await db
+      .insert(reports)
+      .values({
+        ...insertReport,
+        accountNumber: insertReport.accountNumber || null,
+        bank: insertReport.bank || null,
+        isAnonymous: insertReport.isAnonymous || false,
+        reporterName: insertReport.reporterName || null,
+        reporterPhone: insertReport.reporterPhone || null,
+        receiptUrl: null
+      })
+      .returning();
+    return report;
+  }
+
+  async getReport(id: number): Promise<Report | undefined> {
+    const [report] = await db.select().from(reports).where(eq(reports.id, id));
+    return report || undefined;
+  }
+
+  async searchReports(query: string): Promise<Report[]> {
+    if (!query) {
+      const allReports = await db.select().from(reports).limit(10);
+      return allReports;
+    }
+    
+    const searchResults = await db.select().from(reports);
+    return searchResults.filter(report => 
+      report.phoneNumber.includes(query) ||
+      report.accountNumber?.includes(query) ||
+      report.accusedName.toLowerCase().includes(query.toLowerCase()) ||
+      report.description.toLowerCase().includes(query.toLowerCase())
+    );
+  }
+
+  async getRecentReports(limit = 6): Promise<Report[]> {
+    const recentReports = await db
+      .select()
+      .from(reports)
+      .orderBy(reports.createdAt)
+      .limit(limit);
+    return recentReports.reverse();
+  }
+
+  async createBlogPost(insertPost: InsertBlogPost): Promise<BlogPost> {
+    const [post] = await db
+      .insert(blogPosts)
+      .values({
+        ...insertPost,
+        coverImage: insertPost.coverImage || null,
+        tags: insertPost.tags || null,
+        readTime: insertPost.readTime || 5
+      })
+      .returning();
+    return post;
+  }
+
+  async getBlogPost(id: number): Promise<BlogPost | undefined> {
+    const [post] = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
+    return post || undefined;
+  }
+
+  async getBlogPostBySlug(slug: string): Promise<BlogPost | undefined> {
+    const [post] = await db.select().from(blogPosts).where(eq(blogPosts.slug, slug));
+    return post || undefined;
+  }
+
+  async getAllBlogPosts(search?: string): Promise<BlogPost[]> {
+    const allPosts = await db.select().from(blogPosts).orderBy(blogPosts.createdAt);
+    
+    if (!search) {
+      return allPosts.reverse();
+    }
+    
+    const searchLower = search.toLowerCase();
+    return allPosts
+      .filter(post => 
+        post.title.toLowerCase().includes(searchLower) ||
+        post.excerpt.toLowerCase().includes(searchLower) ||
+        post.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+      )
+      .reverse();
+  }
+
+  async updateBlogPostViews(id: number): Promise<void> {
+    const [post] = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
+    if (post) {
+      await db
+        .update(blogPosts)
+        .set({ views: (post.views || 0) + 1 })
+        .where(eq(blogPosts.id, id));
+    }
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -218,4 +335,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

@@ -22,12 +22,12 @@ Chat system: Built-in AI chatbox with Vietnamese language support (no external Z
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js framework
 - **Language**: TypeScript for type safety across the stack
-- **Data Storage**: In-memory storage with interface design for easy database migration
+- **Data Storage**: PostgreSQL database with Drizzle ORM for type-safe operations
 - **Validation**: Zod for consistent data validation across client and server
 - **API Design**: RESTful API with clear endpoint structure
 
 ### Database Design
-The application uses Drizzle ORM with PostgreSQL schema definitions, though currently implemented with in-memory storage. The schema includes:
+The application uses Drizzle ORM with PostgreSQL for persistent data storage. The schema includes:
 - **Users**: Basic user management (prepared for future authentication)
 - **Reports**: Fraud reports with detailed information about scammers
 - **Blog Posts**: Educational content about fraud prevention
@@ -89,12 +89,12 @@ The application uses Drizzle ORM with PostgreSQL schema definitions, though curr
 - **Static Assets**: Frontend served from Express server
 - **Environment**: Designed for deployment on Replit or similar platforms
 
-### Database Migration Path
-The application is structured to easily migrate from in-memory storage to PostgreSQL:
-- Drizzle schema already defined for PostgreSQL
-- Storage interface allows swapping implementations
-- Environment variables configured for database connection
-- Migration scripts ready via Drizzle Kit
+### Database Implementation
+The application now uses PostgreSQL as the primary database:
+- Drizzle ORM provides type-safe database operations
+- Automatic database initialization with sample data on startup
+- Database tables created via Drizzle Kit migrations
+- Environment variables configured for secure database connections
 
 ### Security Considerations
 - CORS configuration for cross-origin requests
