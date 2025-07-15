@@ -7,6 +7,7 @@ ChốngLừaĐảo is a Vietnamese anti-fraud web application designed to protec
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Chat system: Built-in AI chatbox with Vietnamese language support (no external Zalo/Facebook integration).
 
 ## System Architecture
 
@@ -50,8 +51,9 @@ The application uses Drizzle ORM with PostgreSQL schema definitions, though curr
 
 ### 4. AI Chatbot
 - **Purpose**: Provide real-time assistance and support to users
-- **Implementation**: Floating chatbox with smart responses based on keywords
-- **Integration**: Links to external platforms (Zalo, Facebook Messenger)
+- **Implementation**: Built-in floating chatbox with intelligent Vietnamese responses
+- **Features**: Smart keyword detection, quick action buttons, comprehensive fraud prevention advice
+- **Responses**: Context-aware replies for OTP scams, investment fraud, banking security, social media safety
 
 ## Data Flow
 

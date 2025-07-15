@@ -11,7 +11,7 @@ export default function Chatbox() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "1",
-      text: "Chào bạn! Tôi có thể giúp bạn kiểm tra thông tin lừa đảo hoặc tư vấn cách phòng tránh. Bạn cần hỗ trợ gì?",
+      text: "Xin chào! Tôi là AI hỗ trợ phòng chống lừa đảo. Tôi có thể giúp bạn:\n\n• Nhận diện các thủ đoạn lừa đảo\n• Tư vấn cách phòng tránh\n• Kiểm tra thông tin đáng ngờ\n• Hướng dẫn báo cáo lừa đảo\n\nHãy chia sẻ thông tin bạn cần hỗ trợ!",
       isUser: false,
       timestamp: new Date(),
     },
@@ -103,9 +103,9 @@ export default function Chatbox() {
                 <div className={`rounded-lg p-3 max-w-xs shadow-sm ${
                   message.isUser 
                     ? 'bg-primary text-white rounded-tr-none' 
-                    : 'bg-white rounded-tl-none'
+                    : 'bg-white rounded-tl-none border border-slate-200'
                 }`}>
-                  <p className="text-sm">{message.text}</p>
+                  <p className="text-sm whitespace-pre-line">{message.text}</p>
                   <p className={`text-xs mt-1 ${
                     message.isUser ? 'text-blue-100' : 'text-slate-500'
                   }`}>
@@ -160,24 +160,35 @@ export default function Chatbox() {
               </Button>
             </div>
             
-            {/* External Chat Buttons */}
-            <div className="flex space-x-2">
-              <a 
-                href={`https://zalo.me/${process.env.VITE_ZALO_OA_ID || 'OA_ID'}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 bg-blue-500 text-white py-2 px-3 rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors text-center"
-              >
-                Chat Zalo
-              </a>
-              <a 
-                href={`https://m.me/${process.env.VITE_FACEBOOK_PAGE_ID || 'PAGE_ID'}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors text-center"
-              >
-                Messenger
-              </a>
+            {/* Quick Actions */}
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500 text-center">Câu hỏi nhanh:</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={() => setInputMessage("Làm sao nhận biết lừa đảo OTP?")}
+                  className="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded transition-colors"
+                >
+                  Lừa đảo OTP
+                </button>
+                <button 
+                  onClick={() => setInputMessage("Cách phòng tránh lừa đảo đầu tư?")}
+                  className="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded transition-colors"
+                >
+                  Lừa đảo đầu tư
+                </button>
+                <button 
+                  onClick={() => setInputMessage("Tôi bị lừa đảo rồi, phải làm gì?")}
+                  className="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded transition-colors"
+                >
+                  Đã bị lừa
+                </button>
+                <button 
+                  onClick={() => setInputMessage("Kiểm tra số điện thoại lạ")}
+                  className="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded transition-colors"
+                >
+                  Kiểm tra SĐT
+                </button>
+              </div>
             </div>
           </div>
         </div>

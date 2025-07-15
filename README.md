@@ -24,9 +24,10 @@ Nền tảng web bảo vệ cộng đồng khỏi các hành vi lừa đảo tr�
 
 ### 💬 4. Chatbox hỗ trợ AI
 - Chatbox nổi ở góc phải màn hình, có thể thu gọn/mở rộng
-- AI chatbot với các phản hồi thông minh dựa trên từ khóa
-- Liên kết đến Zalo và Facebook Messenger
-- Giao diện chat hiện đại với tin nhắn realtime
+- AI chatbot thông minh với phản hồi tiếng Việt chuyên sâu
+- Nhận diện ngữ cảnh và đưa ra lời khuyên phù hợp
+- Nút thao tác nhanh cho các câu hỏi phổ biến
+- Hỗ trợ 24/7 cho mọi vấn đề về lừa đảo
 
 ## 🛠️ Công nghệ sử dụng
 

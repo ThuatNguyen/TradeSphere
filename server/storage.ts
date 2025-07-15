@@ -40,6 +40,45 @@ export class MemStorage implements IStorage {
   }
 
   private initializeSampleData() {
+    // Add sample reports
+    const sampleReports: InsertReport[] = [
+      {
+        accusedName: "Nguyễn Văn A",
+        phoneNumber: "0123456789",
+        accountNumber: "1234567890123",
+        bank: "vietcombank",
+        amount: 5000000,
+        description: "Lừa đảo qua Facebook bằng cách giả mạo bán hàng online. Đã chuyển tiền nhưng không nhận được hàng và bị chặn liên lạc.",
+        isAnonymous: false,
+        reporterName: "Trần Thị B",
+        reporterPhone: "0987654321"
+      },
+      {
+        accusedName: "Lê Minh C",
+        phoneNumber: "0987123456",
+        accountNumber: "9876543210987",
+        bank: "techcombank",
+        amount: 10000000,
+        description: "Lừa đảo đầu tư tiền ảo với lời hứa lợi nhuận cao. Sau khi chuyển tiền không thể rút được và mất liên lạc.",
+        isAnonymous: true,
+        reporterName: null,
+        reporterPhone: null
+      },
+      {
+        accusedName: "Phạm Văn D",
+        phoneNumber: "0369852147",
+        accountNumber: null,
+        bank: null,
+        amount: 2000000,
+        description: "Lừa đảo qua tin nhắn giả mạo ngân hàng yêu cầu cập nhật thông tin và lấy mã OTP.",
+        isAnonymous: false,
+        reporterName: "Hoàng Thị E",
+        reporterPhone: "0912345678"
+      }
+    ];
+
+    sampleReports.forEach(report => this.createReport(report));
+
     const sampleBlogs: InsertBlogPost[] = [
       {
         title: "10 thủ đoạn lừa đảo phổ biến nhất năm 2024",
@@ -93,9 +132,15 @@ export class MemStorage implements IStorage {
   async createReport(insertReport: InsertReport): Promise<Report> {
     const id = this.currentReportId++;
     const report: Report = { 
-      ...insertReport, 
+      ...insertReport,
       id, 
-      createdAt: new Date() 
+      createdAt: new Date(),
+      accountNumber: insertReport.accountNumber || null,
+      bank: insertReport.bank || null,
+      isAnonymous: insertReport.isAnonymous || false,
+      reporterName: insertReport.reporterName || null,
+      reporterPhone: insertReport.reporterPhone || null,
+      receiptUrl: null
     };
     this.reports.set(id, report);
     return report;
@@ -131,7 +176,10 @@ export class MemStorage implements IStorage {
       ...insertPost, 
       id, 
       views: 0,
-      createdAt: new Date() 
+      createdAt: new Date(),
+      coverImage: insertPost.coverImage || null,
+      tags: insertPost.tags || null,
+      readTime: insertPost.readTime || 5
     };
     this.blogPosts.set(id, post);
     return post;

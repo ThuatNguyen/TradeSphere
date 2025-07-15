@@ -116,20 +116,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Chat endpoint (mock response)
+  // AI Chat endpoint (enhanced responses)
   app.post("/api/chat", async (req, res) => {
     try {
       const { message } = req.body;
+      const messageText = message.toLowerCase();
       
-      // Simple mock AI responses based on keywords
-      let response = "Tôi có thể giúp bạn kiểm tra thông tin lừa đảo. Bạn có thể chia sẻ thêm chi tiết không?";
+      let response = "Xin chào! Tôi là AI hỗ trợ phòng chống lừa đảo. Bạn có thể chia sẻ thông tin nghi ngờ hoặc hỏi cách phòng tránh lừa đảo.";
       
-      if (message.toLowerCase().includes("otp") || message.toLowerCase().includes("mã xác thực")) {
-        response = "⚠️ Cảnh báo! Ngân hàng không bao giờ yêu cầu OTP qua tin nhắn hay cuộc gọi. Đây có thể là lừa đảo. Không cung cấp mã OTP cho bất kỳ ai!";
-      } else if (message.toLowerCase().includes("đầu tư") || message.toLowerCase().includes("lợi nhuận")) {
-        response = "🚨 Hãy cẩn thận với các lời mời đầu tư hứa hẹn lợi nhuận cao! Kiểm tra kỹ giấy phép hoạt động và không chuyển tiền nếu chưa chắc chắn.";
-      } else if (message.toLowerCase().includes("chuyển tiền") || message.toLowerCase().includes("tài khoản")) {
-        response = "💡 Trước khi chuyển tiền, hãy xác minh thông tin người nhận qua nhiều kênh khác nhau. Gọi điện trực tiếp để xác nhận.";
+      // Specific fraud type responses
+      if (messageText.includes("otp") || messageText.includes("mã xác thực") || messageText.includes("mã otp")) {
+        response = "🚨 CẢNH BÁO: Ngân hàng KHÔNG BAO GIỜ yêu cầu OTP qua điện thoại hay tin nhắn! Đây là thủ đoạn lừa đảo phổ biến. Hãy:\n\n• Không cung cấp mã OTP cho ai\n• Liên hệ trực tiếp ngân hàng qua hotline chính thức\n• Báo cáo ngay nếu đã bị lừa";
+      } else if (messageText.includes("đầu tư") || messageText.includes("lợi nhuận") || messageText.includes("bitcoin") || messageText.includes("forex")) {
+        response = "💰 CẢNH BÁO ĐẦU TƯ: Hãy cẩn thận với các cơ hội đầu tư hứa hẹn lợi nhuận cao!\n\n• Kiểm tra giấy phép hoạt động\n• Không chuyển tiền trước khi xác minh\n• Tìm hiểu về công ty qua nhiều nguồn\n• Nếu quá tốt để tin được thì có thể là lừa đảo";
+      } else if (messageText.includes("chuyển tiền") || messageText.includes("tài khoản") || messageText.includes("ngân hàng")) {
+        response = "💳 BẢNG MẬT CHUYỂN TIỀN:\n\n• Xác minh người nhận qua điện thoại\n• Kiểm tra thông tin tài khoản kỹ lưỡng\n• Chuyển số tiền nhỏ để thử nghiệm trước\n• Lưu lại mọi bằng chứng giao dịch\n• Không chuyển tiền cho người lạ";
+      } else if (messageText.includes("facebook") || messageText.includes("zalo") || messageText.includes("mạng xã hội")) {
+        response = "📱 LỪA ĐẢO MẠNG XÃ HỘI:\n\n• Cảnh giác với tài khoản fake\n• Không click link lạ\n• Xác minh danh tính qua video call\n• Không chia sẻ thông tin cá nhân\n• Báo cáo tài khoản đáng ngờ";
+      } else if (messageText.includes("tin nhắn") || messageText.includes("sms") || messageText.includes("link")) {
+        response = "📧 LỪA ĐẢO TIN NHẮN:\n\n• Không click vào link lạ\n• Kiểm tra số điện thoại gửi tin\n• Ngân hàng không gửi link trong tin nhắn\n• Truy cập website chính thức thay vì qua link\n• Báo cáo tin nhắn spam";
+      } else if (messageText.includes("giúp") || messageText.includes("hỗ trợ") || messageText.includes("tư vấn")) {
+        response = "🤝 TÔI CÓ THỂ HỖ TRỢ:\n\n• Tư vấn nhận diện lừa đảo\n• Hướng dẫn cách phòng tránh\n• Kiểm tra thông tin đáng ngờ\n• Cách báo cáo lừa đảo\n\nHãy chia sẻ tình huống cụ thể để tôi tư vấn chính xác hơn!";
+      } else if (messageText.includes("bị lừa") || messageText.includes("mất tiền") || messageText.includes("bị chiếm")) {
+        response = "😰 BẠN ĐÃ BỊ LỪA? HÀNH ĐỘNG NGAY:\n\n1️⃣ Liên hệ ngân hàng khóa tài khoản\n2️⃣ Báo cáo công an địa phương\n3️⃣ Lưu lại mọi bằng chứng\n4️⃣ Tạo tố cáo trên website này\n5️⃣ Thông báo cho người thân cảnh giác\n\nThời gian vàng trong 24h đầu!";
+      } else if (messageText.includes("số điện thoại") || messageText.includes("sđt") || /\d{10,11}/.test(messageText)) {
+        response = "📞 KIỂM TRA SỐ ĐIỆN THOẠI:\n\n• Sử dụng tính năng tìm kiếm trên trang chủ\n• Kiểm tra trong cơ sở dữ liệu tố cáo\n• Tra cứu trên các diễn đàn uy tín\n• Cảnh giác nếu số lạ gọi về tài chính\n\nHãy tìm kiếm số điện thoại đó ngay!";
       }
       
       res.json({ response });
