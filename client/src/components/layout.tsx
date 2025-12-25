@@ -11,6 +11,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const navigation = [
     { name: "Tìm kiếm", href: "/", icon: Search },
+    { name: "Tra cứu lừa đảo", href: "/scam-search", icon: Shield },
     { name: "Tố cáo", href: "/report", icon: AlertTriangle },
     { name: "Blog", href: "/blogs", icon: Newspaper },
   ];

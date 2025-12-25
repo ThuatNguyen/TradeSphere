@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: tradesphere-postgres
+    environment:
+      POSTGRES_USER: tradesphere
+      POSTGRES_PASSWORD: tradesphere123
+      POSTGRES_DB: tradesphere
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tradesphere"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tradesphere-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: tradesphere-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - tradesphere-network
+
+  # FastAPI Service (Python)
+  fastapi:
+    build:
+      context: ./fastapi-service
+      dockerfile: Dockerfile
+    container_name: tradesphere-fastapi
+    environment:
+      DATABASE_URL: postgresql://tradesphere:tradesphere123@postgres:5432/tradesphere
+      REDIS_URL: redis://redis:6379/0
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ZALO_OA_ID: ${ZALO_OA_ID}
+      ZALO_ACCESS_TOKEN: ${ZALO_ACCESS_TOKEN}
+      ZALO_SECRET_KEY: ${ZALO_SECRET_KEY}
+      ENVIRONMENT: development
+      DEBUG: "True"
+    volumes:
+      - ./fastapi-service:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - tradesphere-network
+    restart: unless-stopped
+
+  # Express Backend (Node.js)
+  express:
+    build:
+      context: .
+      dockerfile: Dockerfile.express
+    container_name: tradesphere-express
+    environment:
+      DATABASE_URL: postgresql://tradesphere:tradesphere123@postgres:5432/tradesphere
+      PYTHON_API_URL: http://fastapi:8000
+      PYTHON_API_KEY: ${PYTHON_API_KEY}
+      NODE_ENV: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      fastapi:
+        condition: service_started
+    networks:
+      - tradesphere-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: tradesphere-nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - express
+      - fastapi
+    networks:
+      - tradesphere-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  tradesphere-network:
+    driver: bridge

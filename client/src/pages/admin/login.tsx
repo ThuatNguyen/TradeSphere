@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { fetchAPI } from "@/lib/queryClient";
 
 export default function AdminLogin() {
   const [username, setUsername] = useState("");
@@ -19,7 +19,7 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     try {
-      const response = await apiRequest("/api/admin/login", {
+      const response = await fetchAPI("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -37,11 +37,12 @@ export default function AdminLogin() {
       } else {
         toast({
           title: "Đăng nhập thất bại",
-          description: "Tên đăng nhập hoặc mật khẩu không đúng",
+          description: data.error || "Tên đăng nhập hoặc mật khẩu không đúng",
           variant: "destructive",
         });
       }
     } catch (error) {
+      console.error("Login error:", error);
       toast({
         title: "Lỗi đăng nhập",
         description: "Không thể kết nối tới máy chủ",
