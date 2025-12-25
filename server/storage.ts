@@ -1,9 +1,9 @@
 import { 
-  users, reports, blogPosts, admins, chatSessions, chatMessages,
+  users, reports, blogPosts, admins, chatSessions, chatMessages, scamSearches,
   type User, type InsertUser, type Report, type InsertReport, 
   type BlogPost, type InsertBlogPost, type UpdateBlogPost,
   type Admin, type InsertAdmin, type ChatSession, type InsertChatSession,
-  type ChatMessage, type InsertChatMessage
+  type ChatMessage, type InsertChatMessage, type ScamSearch, type InsertScamSearch
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, ilike, desc, asc } from "drizzle-orm";
@@ -42,6 +42,10 @@ export interface IStorage {
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
   getChatMessages(sessionId: string, limit?: number): Promise<ChatMessage[]>;
   getAllChatSessions(limit?: number): Promise<ChatSession[]>;
+  
+  // Scam search operations
+  createScamSearch(search: InsertScamSearch): Promise<ScamSearch>;
+  getRecentScamSearches(limit?: number): Promise<ScamSearch[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -85,13 +89,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchReports(query: string): Promise<Report[]> {
-    const searchLower = query.toLowerCase().trim();
+    const searchQuery = query.trim();
     const allReports = await db.select().from(reports).orderBy(desc(reports.createdAt));
     
     return allReports.filter(report => 
-      report.accusedName.toLowerCase().includes(searchLower) ||
-      report.phoneNumber.includes(query) ||
-      (report.accountNumber && report.accountNumber.includes(query))
+      (report.accusedName && report.accusedName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (report.phoneNumber && report.phoneNumber.includes(searchQuery)) ||
+      (report.accountNumber && report.accountNumber.includes(searchQuery))
     );
   }
 
@@ -231,6 +235,20 @@ export class DatabaseStorage implements IStorage {
   async getAllChatSessions(limit = 100): Promise<ChatSession[]> {
     return await db.select().from(chatSessions)
       .orderBy(desc(chatSessions.createdAt))
+      .limit(limit);
+  }
+
+  // Scam search operations
+  async createScamSearch(search: InsertScamSearch): Promise<ScamSearch> {
+    const [newSearch] = await db.insert(scamSearches)
+      .values(search)
+      .returning();
+    return newSearch;
+  }
+
+  async getRecentScamSearches(limit = 50): Promise<ScamSearch[]> {
+    return await db.select().from(scamSearches)
+      .orderBy(desc(scamSearches.searchTime))
       .limit(limit);
   }
 }

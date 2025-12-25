@@ -1,8 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertReportSchema, insertBlogPostSchema, insertAdminSchema, insertChatSessionSchema, insertChatMessageSchema, updateBlogPostSchema } from "@shared/schema";
+import { insertReportSchema, insertBlogPostSchema, insertAdminSchema, insertChatSessionSchema, insertChatMessageSchema, updateBlogPostSchema, insertScamSearchSchema } from "@shared/schema";
 import { z } from "zod";
+import { searchScams, chatWithAI, analyzeText, getCacheStats, clearCache } from "./lib/pythonClient";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Search reports
@@ -116,6 +117,208 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== PYTHON API PROXY ROUTES ==========
+  
+  // Scam search (proxy to Python API)
+  app.get("/api/scams/search", async (req, res) => {
+    const startTime = Date.now();
+    try {
+      const { keyword, type } = req.query;
+      
+      console.log(`🔍 Scam search request: keyword="${keyword}", type="${type || 'all'}"`);
+      
+      if (!keyword || typeof keyword !== 'string') {
+        return res.status(400).json({ error: "Keyword is required" });
+      }
+      
+      // Search in local database first
+      console.log(`📊 Searching local database for: ${keyword}...`);
+      const localReports = await storage.searchReports(keyword);
+      
+      // If found in local database, return immediately without external search
+      if (localReports.length > 0) {
+        const duration = Date.now() - startTime;
+        const localSource = {
+          success: true,
+          source: 'tradesphere.db',
+          keyword: keyword,
+          total_scams: localReports.length,
+          data: localReports.map(report => ({
+            name: report.accusedName,
+            phone: report.phoneNumber || '',
+            account_number: report.accountNumber || '',
+            bank: report.bank || '',
+            amount: report.scamAmount?.toString() || '',
+            description: report.description,
+            date: report.createdAt?.toISOString().split('T')[0] || '',
+            detail_link: `/detail/${report.id}`,
+            report_id: report.id
+          }))
+        };
+        
+        const result = {
+          success: true,
+          keyword: keyword,
+          total_results: localReports.length,
+          sources: [localSource],
+          cached: false,
+          response_time_ms: duration
+        };
+        
+        console.log(`✅ Found ${localReports.length} results in local DB in ${duration}ms (skipped external search)`);
+        
+        // Log search to database
+        try {
+          await storage.createScamSearch({
+            keyword,
+            source: 'local',
+            resultsCount: localReports.length,
+            responseTimeMs: duration,
+          });
+        } catch (dbError) {
+          console.error("⚠️ Failed to log search:", dbError);
+        }
+        
+        return res.json(result);
+      }
+      
+      // No local results, search external sources
+      console.log(`⏳ No local results, calling Python API for: ${keyword}...`);
+      const result = await searchScams(keyword, type as string);
+      const duration = Date.now() - startTime;
+      
+      console.log(`✅ Search completed in ${duration}ms: ${result.total_results || 0} results found from external sources`);
+      
+      // Log search to database
+      try {
+        await storage.createScamSearch({
+          keyword,
+          source: 'web',
+          resultsCount: result.total_results || 0,
+          responseTimeMs: result.response_time_ms || null,
+        });
+      } catch (dbError) {
+        console.error("⚠️ Failed to log search:", dbError);
+      }
+      
+      res.json(result);
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+      console.error(`❌ Scam search failed after ${duration}ms:`, {
+        keyword: req.query.keyword,
+        errorCode: error.code,
+        errorMessage: error.message,
+        isTimeout: error.code === 'ECONNABORTED',
+        status: error.response?.status,
+      });
+      
+      res.status(500).json({ 
+        error: "Search failed", 
+        message: error.code === 'ECONNABORTED' ? 'Request timeout - search taking too long' : error.message,
+        details: error.response?.data || undefined
+      });
+    }
+  });
+
+  // AI Chat (proxy to Python API for better responses)
+  app.post("/api/ai/chat", async (req, res) => {
+    try {
+      const { message, sessionId, context } = req.body;
+      
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: "Message is required" });
+      }
+      
+      // Call Python AI service
+      const result = await chatWithAI(message, sessionId, context);
+      
+      // Save to database
+      if (sessionId) {
+        try {
+          let session = await storage.getChatSession(sessionId);
+          if (!session) {
+            session = await storage.createChatSession({
+              sessionId,
+              userAgent: req.headers['user-agent'] || null,
+              ipAddress: req.ip || null
+            });
+          }
+          
+          await storage.createChatMessage({
+            sessionId,
+            message,
+            isUser: true
+          });
+          
+          await storage.createChatMessage({
+            sessionId,
+            message: result.response,
+            isUser: false
+          });
+        } catch (dbError) {
+          console.error("Chat DB error:", dbError);
+        }
+      }
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("AI chat error:", error);
+      res.status(500).json({ 
+        error: "Chat failed", 
+        message: error.message 
+      });
+    }
+  });
+
+  // Analyze text for scam indicators
+  app.post("/api/ai/analyze", async (req, res) => {
+    try {
+      const { text } = req.body;
+      
+      if (!text || typeof text !== 'string') {
+        return res.status(400).json({ error: "Text is required" });
+      }
+      
+      const result = await analyzeText(text);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Text analysis error:", error);
+      res.status(500).json({ 
+        error: "Analysis failed", 
+        message: error.message 
+      });
+    }
+  });
+
+  // Cache stats (admin)
+  app.get("/api/admin/cache/stats", async (req, res) => {
+    try {
+      const stats = await getCacheStats();
+      res.json(stats);
+    } catch (error: any) {
+      res.status(500).json({ 
+        error: "Failed to get cache stats", 
+        message: error.message 
+      });
+    }
+  });
+
+  // Clear cache (admin)
+  app.delete("/api/admin/cache/clear", async (req, res) => {
+    try {
+      const { pattern } = req.query;
+      const result = await clearCache(pattern as string);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ 
+        error: "Failed to clear cache", 
+        message: error.message 
+      });
+    }
+  });
+
+  // ========== LEGACY ROUTES (kept for backward compatibility) ==========
+  
   // AI Chat endpoint (enhanced responses)
   app.post("/api/chat", async (req, res) => {
     try {

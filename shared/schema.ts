@@ -111,3 +111,108 @@ export type ChatSession = typeof chatSessions.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type UpdateBlogPost = z.infer<typeof updateBlogPostSchema>;
+
+// New tables for Python API integration
+export const scamSearches = pgTable("scam_searches", {
+  id: serial("id").primaryKey(),
+  keyword: text("keyword").notNull(),
+  source: text("source"), // 'web' | 'zalo'
+  userId: integer("user_id"),
+  zaloUserId: text("zalo_user_id"),
+  resultsCount: integer("results_count"),
+  searchTime: timestamp("search_time").defaultNow(),
+  responseTimeMs: integer("response_time_ms"),
+});
+
+export const scamCache = pgTable("scam_cache", {
+  id: serial("id").primaryKey(),
+  keyword: text("keyword").notNull(),
+  source: text("source").notNull(),
+  data: text("data").notNull(), // JSON string
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+  hitCount: integer("hit_count").default(0),
+});
+
+export const zaloUsers = pgTable("zalo_users", {
+  id: serial("id").primaryKey(),
+  zaloUserId: text("zalo_user_id").unique().notNull(),
+  displayName: text("display_name"),
+  avatar: text("avatar"),
+  followedAt: timestamp("followed_at").defaultNow(),
+  lastInteraction: timestamp("last_interaction"),
+  isActive: boolean("is_active").default(true),
+  preferences: text("preferences"), // JSON
+});
+
+export const zaloMessages = pgTable("zalo_messages", {
+  id: serial("id").primaryKey(),
+  zaloUserId: text("zalo_user_id").notNull(),
+  messageType: text("message_type"),
+  messageContent: text("message_content"),
+  isFromUser: boolean("is_from_user"),
+  sentAt: timestamp("sent_at").defaultNow(),
+});
+
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  type: text("type"),
+  title: text("title"),
+  content: text("content"),
+  targetChannel: text("target_channel"),
+  status: text("status").default("pending"),
+  scheduledAt: timestamp("scheduled_at"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const apiLogs = pgTable("api_logs", {
+  id: serial("id").primaryKey(),
+  service: text("service"),
+  endpoint: text("endpoint"),
+  method: text("method"),
+  statusCode: integer("status_code"),
+  responseTimeMs: integer("response_time_ms"),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Insert schemas for new tables
+export const insertScamSearchSchema = createInsertSchema(scamSearches).omit({
+  id: true,
+  searchTime: true,
+});
+
+export const insertZaloUserSchema = createInsertSchema(zaloUsers).omit({
+  id: true,
+  followedAt: true,
+});
+
+export const insertZaloMessageSchema = createInsertSchema(zaloMessages).omit({
+  id: true,
+  sentAt: true,
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertApiLogSchema = createInsertSchema(apiLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type InsertScamSearch = z.infer<typeof insertScamSearchSchema>;
+export type ScamSearch = typeof scamSearches.$inferSelect;
+export type InsertZaloUser = z.infer<typeof insertZaloUserSchema>;
+export type ZaloUser = typeof zaloUsers.$inferSelect;
+export type InsertZaloMessage = z.infer<typeof insertZaloMessageSchema>;
+export type ZaloMessage = typeof zaloMessages.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+export type InsertApiLog = z.infer<typeof insertApiLogSchema>;
+export type ApiLog = typeof apiLogs.$inferSelect;

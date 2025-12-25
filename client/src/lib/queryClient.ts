@@ -23,6 +23,24 @@ export async function apiRequest(
   return res;
 }
 
+// New fetch wrapper that accepts URL and fetch options (like native fetch)
+export async function fetchAPI(
+  url: string,
+  options?: RequestInit,
+): Promise<Response> {
+  const res = await fetch(url, {
+    ...options,
+    credentials: "include",
+  });
+
+  // Don't throw for login/admin endpoints, let caller handle errors
+  if (!url.includes('/admin/') && !res.ok) {
+    await throwIfResNotOk(res);
+  }
+  
+  return res;
+}
+
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
