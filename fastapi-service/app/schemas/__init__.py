@@ -74,6 +74,52 @@ class ZaloSendMessageResponse(BaseModel):
     error: Optional[str] = None
 
 
+# Broadcast Schemas
+class BroadcastCampaignCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+    content: str = Field(..., min_length=1, max_length=2000)
+    target: str = Field(default="all", pattern="^(all|active|specific)$")
+    target_user_ids: Optional[List[str]] = None
+    scheduled_time: Optional[datetime] = None
+
+
+class BroadcastCampaignResponse(BaseModel):
+    id: int
+    title: str
+    content: str
+    status: str
+    target: str
+    total_users: int
+    sent_count: int
+    success_count: int
+    failed_count: int
+    scheduled_time: Optional[datetime]
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class BroadcastStatsResponse(BaseModel):
+    campaign_id: int
+    status: str
+    total_users: int
+    sent_count: int
+    success_count: int
+    failed_count: int
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+    success_rate: float
+    failed_users: List[Dict[str, str]] = []
+
+
+class BroadcastSendRequest(BaseModel):
+    send_now: bool = True
+    scheduled_time: Optional[datetime] = None
+
+
 # Cache Schemas
 class CacheStatsResponse(BaseModel):
     total_cached: int

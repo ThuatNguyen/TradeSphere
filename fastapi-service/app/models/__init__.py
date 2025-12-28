@@ -142,6 +142,38 @@ class Notification(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class BroadcastCampaign(Base):
+    __tablename__ = "broadcast_campaigns"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    content = Column(Text, nullable=False)
+    status = Column(String(50), default='draft', index=True)  # 'draft', 'scheduled', 'sending', 'completed', 'failed'
+    target = Column(String(50), default='all')  # 'all', 'active', 'specific'
+    target_user_ids = Column(JSON)  # List of specific user IDs if target='specific'
+    scheduled_time = Column(DateTime(timezone=True))
+    started_at = Column(DateTime(timezone=True))
+    completed_at = Column(DateTime(timezone=True))
+    total_users = Column(Integer, default=0)
+    sent_count = Column(Integer, default=0)
+    success_count = Column(Integer, default=0)
+    failed_count = Column(Integer, default=0)
+    created_by = Column(String(100))  # Admin user
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class BroadcastLog(Base):
+    __tablename__ = "broadcast_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    campaign_id = Column(Integer, nullable=False, index=True)
+    zalo_user_id = Column(String(100), nullable=False, index=True)
+    status = Column(String(50))  # 'success', 'failed'
+    error_message = Column(Text)
+    sent_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class ApiLog(Base):
     __tablename__ = "api_logs"
     

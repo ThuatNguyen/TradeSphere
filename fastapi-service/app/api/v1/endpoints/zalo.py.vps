@@ -197,7 +197,6 @@ Gửi cho tôi:
 
 Ví dụ:
 - 0123456789
-- "Số này có lừa đảo không: 0987654321"
 - 1234567890
 - https://example.com
 - "Bạn đã trúng thưởng 100 triệu..."
@@ -206,67 +205,19 @@ Gõ /help để xem hướng dẫn này."""
             
         elif is_phone_number(message_text):
             # Search phone number
-            keyword = extract_searchable_keyword(message_text)
-            
-            # Send checking message first
-            checking_msg = f"⏳ Đang kiểm tra số điện thoại: {keyword}\n\nVui lòng đợi trong giây lát..."
-            await zalo_service.send_text_message(user_id, checking_msg)
-            
-            # Save checking message
-            check_msg = ZaloMessage(
-                zalo_user_id=user_id,
-                message_type="text",
-                message_content=checking_msg,
-                is_from_user=False
-            )
-            db.add(check_msg)
-            db.commit()
-            
-            # Do actual search (keyword already extracted)
+            keyword = extract_searchable_keyword(message_text, "phone")
             search_result = await crawler_service.search_all_sources(keyword)
             response_text = await format_scam_results_for_zalo(search_result, keyword)
             
         elif is_bank_account(message_text):
-            # Extract and search bank account
-            keyword = extract_searchable_keyword(message_text)
-            
-            # Send checking message first
-            checking_msg = f"⏳ Đang kiểm tra số tài khoản: {keyword}\n\nVui lòng đợi trong giây lát..."
-            await zalo_service.send_text_message(user_id, checking_msg)
-            
-            # Save checking message
-            check_msg = ZaloMessage(
-                zalo_user_id=user_id,
-                message_type="text",
-                message_content=checking_msg,
-                is_from_user=False
-            )
-            db.add(check_msg)
-            db.commit()
-            
-            # Extract keyword again for consistency
+            # Search bank account
+            keyword = extract_searchable_keyword(message_text, "account")
             search_result = await crawler_service.search_all_sources(keyword)
             response_text = await format_scam_results_for_zalo(search_result, keyword)
             
         elif is_url(message_text):
             # Search URL/domain
-            keyword = extract_searchable_keyword(message_text)
-            
-            # Send checking message first
-            checking_msg = f"⏳ Đang kiểm tra trang web: {keyword}\n\nVui lòng đợi trong giây lát..."
-            await zalo_service.send_text_message(user_id, checking_msg)
-            
-            # Save checking message
-            check_msg = ZaloMessage(
-                zalo_user_id=user_id,
-                message_type="text",
-                message_content=checking_msg,
-                is_from_user=False
-            )
-            db.add(check_msg)
-            db.commit()
-            
-            # Extract keyword for consistency
+            keyword = extract_searchable_keyword(message_text, "url")
             search_result = await crawler_service.search_all_sources(keyword)
             response_text = await format_scam_results_for_zalo(search_result, keyword)
             

@@ -16,6 +16,7 @@ import NotFound from "@/pages/not-found";
 import AdminLogin from "@/pages/admin/login";
 import AdminDashboard from "@/pages/admin/dashboard";
 import ChatDetail from "@/pages/admin/chat-detail";
+import BroadcastPage from "@/pages/admin/broadcast";
 
 // HOC to wrap public pages with Layout and Chatbox
 function withLayout(Component: any) {
@@ -46,6 +47,7 @@ function App() {
           {/* Admin routes - no layout, no chatbox */}
           <Route path="/admin/login" component={AdminLogin} />
           <Route path="/admin/dashboard" component={AdminDashboard} />
+          <Route path="/admin/broadcast" component={BroadcastPage} />
           <Route path="/admin/chat/:sessionId" component={ChatDetail} />
           <Route path="/admin" component={NotFound} />
           
