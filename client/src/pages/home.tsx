@@ -1,32 +1,84 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
-import { Search, Eye, Calendar, DollarSign, MapPin } from "lucide-react";
+import { Link } from "wouter";
+import { Search, Eye, Calendar, DollarSign, AlertTriangle, CheckCircle, Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 import { Report } from "@shared/schema";
 
+interface ScamResult {
+  name?: string;
+  phone?: string;
+  account_number?: string;
+  bank?: string;
+  amount?: string;
+  views?: string;
+  date?: string;
+  detail_link?: string;
+}
+
+interface SourceResult {
+  success: boolean;
+  source: string;
+  keyword: string;
+  total_scams: string | number;
+  data: ScamResult[];
+  error?: string;
+}
+
+interface SearchResponse {
+  success: boolean;
+  keyword: string;
+  total_results: number;
+  sources: SourceResult[];
+  cached?: boolean;
+  response_time_ms?: number;
+}
+
 export default function Home() {
-  const [, setLocation] = useLocation();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<SearchResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const { data: recentReports } = useQuery({
     queryKey: ["/api/reports/recent"],
     queryFn: () => api.getRecentReports(),
   });
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      setLocation(`/search?q=${encodeURIComponent(searchQuery)}`);
+  const handleSearch = async () => {
+    if (!keyword.trim()) return;
+
+    setLoading(true);
+    setError(null);
+    setResults(null);
+
+    try {
+      const response = await fetch(`/api/v1/scams/search?keyword=${encodeURIComponent(keyword)}`);
+      
+      if (!response.ok) {
+        throw new Error(`Search failed: ${response.statusText}`);
+      }
+
+      const data: SearchResponse = await response.json();
+      setResults(data);
+    } catch (err: any) {
+      setError(err.message || "Đã xảy ra lỗi khi tìm kiếm");
+      console.error("Search error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const setExample = (example: string) => {
-    setSearchQuery(example);
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -45,64 +97,285 @@ export default function Home() {
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="text-center">
+          <div className="text-center mb-8">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
               Bảo vệ bản thân khỏi lừa đảo
             </h1>
-            <p className="text-xl mb-8 text-blue-100 max-w-3xl mx-auto">
+            <p className="text-xl text-blue-100 max-w-2xl mx-auto">
               Kiểm tra thông tin lừa đảo, tố cáo kẻ xấu và chia sẻ kinh nghiệm để bảo vệ cộng đồng
             </p>
-            
-            {/* Search Form */}
-            <div className="max-w-2xl mx-auto">
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold text-slate-700 mb-4">Tìm kiếm thông tin lừa đảo</h3>
-                <form onSubmit={handleSearch} className="space-y-4">
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Nhập số điện thoại, số tài khoản hoặc link nghi ngờ..."
-                      className="pr-20"
-                    />
-                    <Button 
-                      type="submit" 
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8"
-                    >
-                      <Search className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2 text-sm">
-                    <span className="text-slate-600">Ví dụ:</span>
-                    <button 
-                      type="button" 
-                      onClick={() => setExample("0123456789")}
-                      className="text-primary hover:underline"
-                    >
-                      0123456789
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={() => setExample("1234567890123")}
-                      className="text-primary hover:underline"
-                    >
-                      1234567890123
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={() => setExample("bit.ly/scam-link")}
-                      className="text-primary hover:underline"
-                    >
-                      bit.ly/scam-link
-                    </button>
-                  </div>
-                </form>
-              </Card>
-            </div>
           </div>
+
+          {/* Search Box */}
+          <Card className="max-w-3xl mx-auto">
+            <CardContent className="pt-6">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Tìm kiếm thông tin lừa đảo</h2>
+                <p className="text-gray-600">
+                  Nhập số điện thoại, số tài khoản hoặc link nghi ngờ để tra cứu
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Nhập số điện thoại, số tài khoản hoặc link nghi ngờ..."
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="flex-1 text-lg py-6"
+                    disabled={loading}
+                  />
+                  <Button
+                    onClick={handleSearch}
+                    disabled={loading || !keyword.trim()}
+                    size="lg"
+                    className="px-8"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Đang tìm...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="mr-2 h-5 w-5" />
+                        Tìm kiếm
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="text-sm text-gray-600">
+                  Ví dụ:{" "}
+                  <button
+                    onClick={() => setKeyword("0123456789")}
+                    className="text-blue-600 hover:underline"
+                  >
+                    0123456789
+                  </button>
+                  {" | "}
+                  <button
+                    onClick={() => setKeyword("1234567890123")}
+                    className="text-blue-600 hover:underline"
+                  >
+                    1234567890123
+                  </button>
+                  {" | "}
+                  <button
+                    onClick={() => setKeyword("bit.ly/scam-link")}
+                    className="text-blue-600 hover:underline"
+                  >
+                    bit.ly/scam-link
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      {/* Search Results */}
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {results && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {results.total_results > 0 ? (
+                  <>
+                    <AlertTriangle className="h-6 w-6 text-red-500" />
+                    Tìm thấy {results.total_results} kết quả cảnh báo
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-6 w-6 text-green-500" />
+                    Không tìm thấy cảnh báo nào
+                  </>
+                )}
+              </CardTitle>
+              <CardDescription>
+                Từ khóa: <strong>{results.keyword}</strong>
+                {results.cached && " (Kết quả từ cache)"}
+                {results.response_time_ms && ` - Thời gian: ${results.response_time_ms}ms`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="all" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="all">
+                    Tất cả ({results.total_results})
+                  </TabsTrigger>
+                  {results.sources.map((source) => (
+                    <TabsTrigger key={source.source} value={source.source}>
+                      {source.source} ({source.total_scams})
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+
+                <TabsContent value="all" className="space-y-4 mt-4">
+                  {results.sources.map((source) => (
+                    source.success && source.data.length > 0 && (
+                      <div key={source.source}>
+                        <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                          {source.source}
+                          <Badge variant="destructive">{source.total_scams} cảnh báo</Badge>
+                        </h3>
+                        <div className="grid gap-3">
+                          {source.data.map((item, idx) => (
+                            <Card key={idx} className="border-l-4 border-l-red-500">
+                              <CardContent className="pt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                  {item.name && (
+                                    <div>
+                                      <strong>Tên:</strong> {item.name}
+                                    </div>
+                                  )}
+                                  {item.phone && (
+                                    <div>
+                                      <strong>SĐT:</strong> {item.phone}
+                                    </div>
+                                  )}
+                                  {item.account_number && (
+                                    <div>
+                                      <strong>STK:</strong> {item.account_number}
+                                    </div>
+                                  )}
+                                  {item.bank && (
+                                    <div>
+                                      <strong>Ngân hàng:</strong> {item.bank}
+                                    </div>
+                                  )}
+                                  {item.amount && (
+                                    <div>
+                                      <strong>Số tiền:</strong> {item.amount}
+                                    </div>
+                                  )}
+                                  {item.views && (
+                                    <div>
+                                      <strong>Lượt xem:</strong> {item.views}
+                                    </div>
+                                  )}
+                                  {item.date && (
+                                    <div>
+                                      <strong>Ngày:</strong> {item.date}
+                                    </div>
+                                  )}
+                                  {item.detail_link && (
+                                    <div>
+                                      <a
+                                        href={item.detail_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:underline flex items-center gap-1"
+                                      >
+                                        Xem chi tiết <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  ))}
+                </TabsContent>
+
+                {results.sources.map((source) => (
+                  <TabsContent key={source.source} value={source.source} className="space-y-4 mt-4">
+                    {source.success ? (
+                      source.data.length > 0 ? (
+                        <div className="grid gap-3">
+                          {source.data.map((item, idx) => (
+                            <Card key={idx} className="border-l-4 border-l-red-500">
+                              <CardContent className="pt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                  {item.name && (
+                                    <div>
+                                      <strong>Tên:</strong> {item.name}
+                                    </div>
+                                  )}
+                                  {item.phone && (
+                                    <div>
+                                      <strong>SĐT:</strong> {item.phone}
+                                    </div>
+                                  )}
+                                  {item.account_number && (
+                                    <div>
+                                      <strong>STK:</strong> {item.account_number}
+                                    </div>
+                                  )}
+                                  {item.bank && (
+                                    <div>
+                                      <strong>Ngân hàng:</strong> {item.bank}
+                                    </div>
+                                  )}
+                                  {item.amount && (
+                                    <div>
+                                      <strong>Số tiền:</strong> {item.amount}
+                                    </div>
+                                  )}
+                                  {item.views && (
+                                    <div>
+                                      <strong>Lượt xem:</strong> {item.views}
+                                    </div>
+                                  )}
+                                  {item.date && (
+                                    <div>
+                                      <strong>Ngày:</strong> {item.date}
+                                    </div>
+                                  )}
+                                  {item.detail_link && (
+                                    <div>
+                                      <a
+                                        href={item.detail_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:underline flex items-center gap-1"
+                                      >
+                                        Xem chi tiết <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      ) : (
+                        <Alert>
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <AlertDescription>
+                            Nguồn {source.source} không tìm thấy cảnh báo nào cho từ khóa này.
+                          </AlertDescription>
+                        </Alert>
+                      )
+                    ) : (
+                      <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>
+                          Lỗi khi tìm kiếm từ {source.source}: {source.error || "Unknown error"}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Recent Reports */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

@@ -15,6 +15,10 @@ import Detail from "@/pages/detail";
 import NotFound from "@/pages/not-found";
 import AdminLogin from "@/pages/admin/login";
 import AdminDashboard from "@/pages/admin/dashboard";
+import AdminReports from "@/pages/admin/reports";
+import AdminBlogs from "@/pages/admin/blogs";
+import AdminChat from "@/pages/admin/chat";
+import AdminUsers from "@/pages/admin/users";
 import ChatDetail from "@/pages/admin/chat-detail";
 import BroadcastPage from "@/pages/admin/broadcast";
 
@@ -47,9 +51,13 @@ function App() {
           {/* Admin routes - no layout, no chatbox */}
           <Route path="/admin/login" component={AdminLogin} />
           <Route path="/admin/dashboard" component={AdminDashboard} />
-          <Route path="/admin/broadcast" component={BroadcastPage} />
+          <Route path="/admin" component={AdminDashboard} />
+          <Route path="/admin/reports" component={AdminReports} />
+          <Route path="/admin/blogs" component={AdminBlogs} />
+          <Route path="/admin/chat" component={AdminChat} />
           <Route path="/admin/chat/:sessionId" component={ChatDetail} />
-          <Route path="/admin" component={NotFound} />
+          <Route path="/admin/broadcast" component={BroadcastPage} />
+          <Route path="/admin/users" component={AdminUsers} />
           
           {/* Public routes with layout and chatbox */}
           <Route path="/" component={HomeWithLayout} />

@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
-import { Shield, Search, AlertTriangle, Newspaper, User } from "lucide-react";
+import { Shield, Search, AlertTriangle, Newspaper, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,10 +9,15 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const adminData = localStorage.getItem("admin");
+    setIsAdmin(!!adminData);
+  }, [location]);
 
   const navigation = [
-    { name: "Tìm kiếm", href: "/", icon: Search },
-    { name: "Tra cứu lừa đảo", href: "/scam-search", icon: Shield },
+    { name: "Tra cứu lừa đảo", href: "/", icon: Shield },
     { name: "Tố cáo", href: "/report", icon: AlertTriangle },
     { name: "Blog", href: "/blogs", icon: Newspaper },
   ];
@@ -59,10 +65,14 @@ export default function Layout({ children }: LayoutProps) {
             </div>
             
             <div className="flex items-center space-x-4">
-              <Button className="bg-primary text-white hover:bg-blue-800">
-                <User className="mr-2 h-4 w-4" />
-                Đăng ký
-              </Button>
+              {isAdmin && (
+                <Link href="/admin/dashboard">
+                  <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Đến Admin
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>

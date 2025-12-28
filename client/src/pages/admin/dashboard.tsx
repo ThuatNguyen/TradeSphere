@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
+import AdminLayout from "@/components/admin-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { 
   FileText, MessageSquare, AlertTriangle, Users, 
-  LogOut, Edit, Trash2, Eye, Plus
+  Edit, Trash2, Eye, Plus
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchAPI } from "@/lib/queryClient";
@@ -25,7 +26,6 @@ import { useToast } from "@/hooks/use-toast";
 import type { Report, BlogPost, ChatSession, Admin } from "@shared/schema";
 
 export default function AdminDashboard() {
-  const [admin, setAdmin] = useState<Admin | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -41,37 +41,29 @@ export default function AdminDashboard() {
     readTime: 5,
   });
 
-  useEffect(() => {
-    const adminData = localStorage.getItem("admin");
-    if (!adminData) {
-      setLocation("/admin/login");
-      return;
-    }
-    setAdmin(JSON.parse(adminData));
-  }, [setLocation]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("admin");
-    setLocation("/admin/login");
-  };
-
   // Fetch data
   const { data: reports = [] } = useQuery({
     queryKey: ["/api/admin/reports"],
-    queryFn: () => fetchAPI("/api/admin/reports").then(res => res.json()),
-    enabled: !!admin,
+    queryFn: () => {
+      console.log('⚠️  Fetching reports...');
+      return fetchAPI("/api/admin/reports").then(res => res.json());
+    },
   });
 
   const { data: blogs = [] } = useQuery({
     queryKey: ["/api/blogs"],
-    queryFn: () => fetchAPI("/api/blogs").then(res => res.json()),
-    enabled: !!admin,
+    queryFn: () => {
+      console.log('📚 Fetching blogs...');
+      return fetchAPI("/api/blogs").then(res => res.json());
+    },
   });
 
   const { data: chatSessions = [] } = useQuery({
     queryKey: ["/api/admin/chat/sessions"],
-    queryFn: () => fetchAPI("/api/admin/chat/sessions").then(res => res.json()),
-    enabled: !!admin,
+    queryFn: () => {
+      console.log('💬 Fetching chat sessions...');
+      return fetchAPI("/api/admin/chat/sessions").then(res => res.json());
+    },
   });
 
   // Mutations
@@ -194,40 +186,11 @@ export default function AdminDashboard() {
     }
   };
 
-  if (!admin) {
-    return null;
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Admin Dashboard
-              </h1>
-              <p className="text-sm text-gray-600">
-                Chào mừng {admin.username} - Quản lý hệ thống ChốngLừaĐảo
-              </p>
-            </div>
-            <Button
-              onClick={handleLogout}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              Đăng xuất
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <AdminLayout>
+      <div className="space-y-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Tổng tố cáo</CardTitle>
@@ -576,6 +539,6 @@ export default function AdminDashboard() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminLayout>
   );
 }

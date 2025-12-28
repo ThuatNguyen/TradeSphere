@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
+import AdminLayout from "@/components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, User, Bot } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import type { ChatMessage, Admin } from "@shared/schema";
+import { fetchAPI } from "@/lib/queryClient";
+import type { ChatMessage } from "@shared/schema";
 
 interface ChatDetailProps {
   params: {
@@ -15,59 +15,36 @@ interface ChatDetailProps {
 }
 
 export default function ChatDetail({ params }: ChatDetailProps) {
-  const [admin, setAdmin] = useState<Admin | null>(null);
   const [, setLocation] = useLocation();
   const { sessionId } = params;
-
-  useEffect(() => {
-    const adminData = localStorage.getItem("admin");
-    if (!adminData) {
-      setLocation("/admin/login");
-      return;
-    }
-    setAdmin(JSON.parse(adminData));
-  }, [navigate]);
 
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ["/api/admin/chat/sessions", sessionId, "messages"],
     queryFn: () => 
-      apiRequest(`/api/admin/chat/sessions/${sessionId}/messages`).then(res => res.json()),
-    enabled: !!admin && !!sessionId,
+      fetchAPI(`/api/admin/chat/sessions/${sessionId}/messages`).then(res => res.json()),
+    enabled: !!sessionId,
   });
 
-  if (!admin) {
-    return null;
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center py-4">
-            <Button
-              onClick={() => setLocation("/admin/dashboard")}
-              variant="ghost"
-              size="sm"
-              className="mr-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Quay lại
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Chat Session
-              </h1>
-              <p className="text-sm text-gray-600">
-                Session ID: {sessionId}
-              </p>
-            </div>
+    <AdminLayout>
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button
+            onClick={() => setLocation("/admin/chat")}
+            variant="ghost"
+            size="sm"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Quay lại
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Chat Session</h1>
+            <p className="text-sm text-muted-foreground">
+              Session ID: {sessionId}
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* Messages */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Card>
           <CardHeader>
             <CardTitle>Lịch sử cuộc trò chuyện</CardTitle>
@@ -76,7 +53,7 @@ export default function ChatDetail({ params }: ChatDetailProps) {
             {isLoading ? (
               <div className="text-center py-8">Đang tải...</div>
             ) : messages.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-muted-foreground">
                 Chưa có tin nhắn nào trong session này
               </div>
             ) : (
@@ -127,6 +104,6 @@ export default function ChatDetail({ params }: ChatDetailProps) {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AdminLayout>
   );
 }

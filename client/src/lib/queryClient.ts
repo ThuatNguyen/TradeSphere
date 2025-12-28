@@ -28,7 +28,13 @@ export async function fetchAPI(
   url: string,
   options?: RequestInit,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  // Use relative URLs to avoid CORS issues
+  // The request will go through the same origin (Express server which proxies to nginx)
+  const fullURL = url.startsWith('http') ? url : url;
+  
+  console.log('📡 fetchAPI:', fullURL);
+  
+  const res = await fetch(fullURL, {
     ...options,
     credentials: "include",
   });

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import AdminLayout from "@/components/admin-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Send, Plus, BarChart, Trash2, Clock, CheckCircle, XCircle } from "lucide-react";
-import { api } from "@/lib/api";
+import { fetchAPI } from "@/lib/queryClient";
 
 interface BroadcastCampaign {
   id: number;
@@ -53,8 +54,8 @@ export default function BroadcastPage() {
   const { data: campaigns, isLoading } = useQuery<BroadcastCampaign[]>({
     queryKey: ["broadcast-campaigns"],
     queryFn: async () => {
-      const res = await api.get("/zalo/broadcast/campaigns");
-      return res.data;
+      const res = await fetchAPI("/api/v1/zalo/broadcast/campaigns");
+      return res.json();
     },
   });
 
@@ -63,8 +64,8 @@ export default function BroadcastPage() {
     queryKey: ["broadcast-stats", selectedCampaign],
     queryFn: async () => {
       if (!selectedCampaign) return null;
-      const res = await api.get(`/zalo/broadcast/${selectedCampaign}/stats`);
-      return res.data;
+      const res = await fetchAPI(`/api/v1/zalo/broadcast/${selectedCampaign}/stats`);
+      return res.json();
     },
     enabled: !!selectedCampaign,
   });
@@ -72,24 +73,40 @@ export default function BroadcastPage() {
   // Create campaign mutation
   const createCampaign = useMutation({
     mutationFn: async (data: { title: string; content: string; target: string }) => {
-      const res = await api.post("/zalo/broadcast/create", data);
-      return res.data;
+      console.log("🚀 Creating campaign:", data);
+      const res = await fetchAPI("/api/v1/zalo/broadcast/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+      console.log("✅ Campaign created:", result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("✅ onSuccess called:", data);
+      alert("✅ Tạo campaign thành công!");
       queryClient.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
       setTitle("");
       setContent("");
       setActiveTab("list");
+    },
+    onError: (error: any) => {
+      console.error("❌ Error creating campaign:", error);
+      const errorMsg = error.message || "Không thể tạo campaign";
+      alert("❌ Lỗi: " + errorMsg);
     },
   });
 
   // Send campaign mutation
   const sendCampaign = useMutation({
     mutationFn: async (campaignId: number) => {
-      const res = await api.post(`/zalo/broadcast/${campaignId}/send`, {
-        send_now: true,
+      const res = await fetchAPI(`/api/v1/zalo/broadcast/${campaignId}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ send_now: true }),
       });
-      return res.data;
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
@@ -99,7 +116,7 @@ export default function BroadcastPage() {
   // Delete campaign mutation
   const deleteCampaign = useMutation({
     mutationFn: async (campaignId: number) => {
-      await api.delete(`/zalo/broadcast/${campaignId}`);
+      await fetchAPI(`/api/v1/zalo/broadcast/${campaignId}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
@@ -107,11 +124,18 @@ export default function BroadcastPage() {
   });
 
   const handleCreateCampaign = () => {
+    console.log("🔘 Button clicked - Creating campaign");
+    console.log("Title:", title);
+    console.log("Content:", content);
+    console.log("Target:", target);
+    
     if (!title || !content) {
+      console.warn("⚠️ Missing required fields");
       alert("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
+    console.log("✅ Validation passed, calling mutation...");
     createCampaign.mutate({ title, content, target });
   };
 
@@ -141,13 +165,14 @@ export default function BroadcastPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Quản lý Broadcast Zalo OA</h1>
-        <p className="text-muted-foreground">
-          Gửi thông báo, cảnh báo lừa đảo cho tất cả người dùng theo dõi OA
-        </p>
-      </div>
+    <AdminLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Quản lý Broadcast Zalo OA</h1>
+          <p className="text-muted-foreground">
+            Gửi thông báo, cảnh báo lừa đảo cho tất cả người dùng theo dõi OA
+          </p>
+        </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
@@ -438,6 +463,7 @@ export default function BroadcastPage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }
