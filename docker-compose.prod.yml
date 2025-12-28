@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: tradesphere-postgres
+    environment:
+      POSTGRES_DB: tradesphere
+      POSTGRES_USER: ${POSTGRES_USER:-tradesphere}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tradesphere_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - tradesphere-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tradesphere}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tradesphere-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - tradesphere-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  fastapi:
+    build:
+      context: ./fastapi-service
+      dockerfile: Dockerfile
+    container_name: tradesphere-fastapi
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tradesphere}:${POSTGRES_PASSWORD:-tradesphere_password}@postgres:5432/tradesphere
+      REDIS_URL: redis://redis:6379
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ZALO_OA_ID: ${ZALO_OA_ID}
+      ZALO_ACCESS_TOKEN: ${ZALO_ACCESS_TOKEN}
+      ZALO_SECRET_KEY: ${ZALO_SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - tradesphere-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  express:
+    build:
+      context: .
+      dockerfile: Dockerfile.express
+    container_name: tradesphere-express
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tradesphere}:${POSTGRES_PASSWORD:-tradesphere_password}@postgres:5432/tradesphere
+      PYTHON_SERVICE_URL: http://fastapi:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      fastapi:
+        condition: service_started
+    networks:
+      - tradesphere-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: tradesphere-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - certbot_data:/var/www/certbot:ro
+      - certbot_conf:/etc/letsencrypt:ro
+    depends_on:
+      - fastapi
+      - express
+    networks:
+      - tradesphere-network
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot
+    container_name: tradesphere-certbot
+    volumes:
+      - certbot_data:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - tradesphere-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  certbot_data:
+  certbot_conf:
+
+networks:
+  tradesphere-network:
+    driver: bridge

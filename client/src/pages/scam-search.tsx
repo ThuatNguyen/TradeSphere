@@ -50,7 +50,7 @@ export default function ScamSearchPage() {
     setResults(null);
 
     try {
-      const response = await fetch(`/api/scams/search?keyword=${encodeURIComponent(keyword)}`);
+      const response = await fetch(`/api/v1/scams/search?keyword=${encodeURIComponent(keyword)}`);
       
       if (!response.ok) {
         throw new Error(`Search failed: ${response.statusText}`);

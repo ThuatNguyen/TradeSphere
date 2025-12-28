@@ -7,7 +7,7 @@ import { searchScams, chatWithAI, analyzeText, getCacheStats, clearCache } from 
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Search reports
-  app.get("/api/search", async (req, res) => {
+  app.get("/api/v1/search", async (req, res) => {
     try {
       const query = req.query.q as string || "";
       const results = await storage.searchReports(query);
@@ -18,7 +18,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get recent reports
-  app.get("/api/reports/recent", async (req, res) => {
+  app.get("/api/v1/reports/recent", async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 6;
       const reports = await storage.getRecentReports(limit);
@@ -29,7 +29,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create report
-  app.post("/api/reports", async (req, res) => {
+  app.post("/api/v1/reports", async (req, res) => {
     try {
       const validatedData = insertReportSchema.parse(req.body);
       const report = await storage.createReport(validatedData);
@@ -44,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get report detail
-  app.get("/api/reports/:id", async (req, res) => {
+  app.get("/api/v1/reports/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const report = await storage.getReport(id);
@@ -58,7 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all blog posts
-  app.get("/api/blogs", async (req, res) => {
+  app.get("/api/v1/blogs", async (req, res) => {
     try {
       const search = req.query.search as string;
       const posts = await storage.getAllBlogPosts(search);
@@ -69,7 +69,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get blog post by slug
-  app.get("/api/blogs/slug/:slug", async (req, res) => {
+  app.get("/api/v1/blogs/slug/:slug", async (req, res) => {
     try {
       const slug = req.params.slug;
       const post = await storage.getBlogPostBySlug(slug);
@@ -86,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get blog post by id
-  app.get("/api/blogs/:id", async (req, res) => {
+  app.get("/api/v1/blogs/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const post = await storage.getBlogPost(id);
@@ -103,7 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create blog post
-  app.post("/api/blogs", async (req, res) => {
+  app.post("/api/v1/blogs", async (req, res) => {
     try {
       const validatedData = insertBlogPostSchema.parse(req.body);
       const post = await storage.createBlogPost(validatedData);
@@ -120,7 +120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========== PYTHON API PROXY ROUTES ==========
   
   // Scam search (proxy to Python API)
-  app.get("/api/scams/search", async (req, res) => {
+  app.get("/api/v1/scams/search", async (req, res) => {
     const startTime = Date.now();
     try {
       const { keyword, type } = req.query;
@@ -320,7 +320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========== LEGACY ROUTES (kept for backward compatibility) ==========
   
   // AI Chat endpoint (enhanced responses)
-  app.post("/api/chat", async (req, res) => {
+  app.post("/api/v1/chat", async (req, res) => {
     try {
       const { message, sessionId } = req.body;
       const messageText = message.toLowerCase();

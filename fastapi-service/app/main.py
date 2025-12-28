@@ -2,8 +2,10 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import time
+import os
 from .config import settings
 from .api.v1.api import api_router
 from .database import engine, Base
@@ -65,6 +67,17 @@ async def add_process_time_header(request: Request, call_next):
 
 # Include API routers
 app.include_router(api_router, prefix="/api/v1")
+
+# Backward compatibility: mount scams router at /api/scams (without /v1)
+from .api.v1.endpoints import scams
+app.include_router(scams.router, prefix="/api/scams", tags=["Scam Search (Legacy)"])
+
+
+# Mount static files for domain verification
+static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    print(f"✅ Static files mounted from: {static_dir}")
 
 
 # Root endpoint

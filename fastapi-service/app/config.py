@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # AI Services
     OPENAI_API_KEY: str = ""
     GOOGLE_AI_API_KEY: str = ""
-    AI_MODEL: str = "gpt-4-turbo-preview"
+    AI_MODEL: str = "gpt-3.5-turbo"
     AI_TEMPERATURE: float = 0.7
     AI_MAX_TOKENS: int = 500
     

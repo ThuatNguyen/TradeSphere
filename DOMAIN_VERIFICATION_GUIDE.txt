@@ -1,0 +1,206 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║       🔧 GIẢI QUYẾT LỖI: Domain Verification - Zalo Webhook          ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+❌ LỖI BẠN GẶP PHẢI:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"The webhook link has not been verified for domain. 
+Please visit https://developers.zalo.me/app/548847842150265811/verify-domain 
+to verify your domain!"
+
+
+🔍 NGUYÊN NHÂN:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Zalo yêu cầu VERIFY DOMAIN trước khi có thể sử dụng webhook.
+
+Vấn đề với ngrok free:
+  ❌ Domain thay đổi mỗi lần restart: 14fede469efd.ngrok-free.app
+  ❌ Không thể verify domain động
+  ❌ Zalo chỉ cho verify domain cố định
+
+
+✅ GIẢI PHÁP 1: Verify Domain với Ngrok (KHUYẾN NGHỊ)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Zalo sẽ yêu cầu bạn thêm 1 file hoặc DNS record để verify domain.
+
+┌─ Bước 1: Vào trang verify ─────────────────────────────────────┐
+│                                                                  │
+│  1. Mở link: https://developers.zalo.me/app/548847842150265811/verify-domain
+│                                                                  │
+│  2. Login với tài khoản Zalo                                    │
+│                                                                  │
+│  3. Bạn sẽ thấy form verify domain                              │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+┌─ Bước 2: Chọn phương thức verify ──────────────────────────────┐
+│                                                                  │
+│  Zalo có 2 cách verify:                                         │
+│                                                                  │
+│  A. HTML File Upload (Dễ hơn với ngrok)                        │
+│     - Download file verification từ Zalo                        │
+│     - Upload lên server                                         │
+│                                                                  │
+│  B. DNS TXT Record (Cần control DNS)                           │
+│     - Add TXT record vào DNS                                    │
+│     - Wait for propagation                                      │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+┌─ Bước 3A: HTML File Method (Nếu chọn A) ───────────────────────┐
+│                                                                  │
+│  1. Download verification file từ Zalo                          │
+│     (Tên file dạng: zalo-verify-xxxxxx.html)                   │
+│                                                                  │
+│  2. Tạo endpoint serve file này:                                │
+│                                                                  │
+│     cd /media/tnt/01DBF4083BC73BB03/CODE/TradeSphere           │
+│     mkdir -p fastapi-service/static                             │
+│     mv ~/Downloads/zalo-verify-*.html fastapi-service/static/  │
+│                                                                  │
+│  3. Add static file serving trong FastAPI                       │
+│     (Xem hướng dẫn bên dưới)                                    │
+│                                                                  │
+│  4. Verify URL:                                                 │
+│     https://14fede469efd.ngrok-free.app/zalo-verify-*.html    │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+
+✅ GIẢI PHÁP 2: Sử dụng Ngrok Paid (Domain cố định)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ngrok Pro ($8/month):
+  ✅ Custom domain cố định: tradesphere.ngrok.io
+  ✅ Không cần verify lại mỗi lần restart
+  ✅ Không timeout
+
+Cách dùng:
+  1. Upgrade: https://dashboard.ngrok.com/billing/subscription
+  2. Reserved domain: https://dashboard.ngrok.com/cloud-edge/domains
+  3. Start: ngrok http 8000 --domain=tradesphere.ngrok.io
+
+
+✅ GIẢI PHÁP 3: Deploy lên VPS/Cloud (PRODUCTION)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Deploy lên server thật:
+
+A. DigitalOcean/AWS/GCP:
+   • Domain riêng: api.tradesphere.com
+   • SSL certificate (Let's Encrypt)
+   • Webhook: https://api.tradesphere.com/api/v1/zalo/webhook
+
+B. Vercel/Railway/Render (Dễ hơn):
+   • Free tier available
+   • Auto SSL
+   • CI/CD integration
+
+
+✅ GIẢI PHÁP 4: Tạm thời - Sử dụng Ngrok Auth Token
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ngrok free với auth token có thể giữ domain lâu hơn (không chắc 100%):
+
+  1. Đăng ký: https://dashboard.ngrok.com/signup
+  2. Get auth token: https://dashboard.ngrok.com/get-started/your-authtoken
+  3. Config:
+     ngrok config add-authtoken YOUR_TOKEN
+  4. Start: ngrok http 8000
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛠️ CODE: Add Static File Serving cho Verification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: fastapi-service/app/main.py
+
+# Add this at the top:
+from fastapi.staticfiles import StaticFiles
+import os
+
+# Add this after app = FastAPI(...):
+static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
+if os.path.exists(static_dir):
+    app.mount("/", StaticFiles(directory=static_dir), name="static")
+
+# Sau đó:
+1. Download verification file từ Zalo
+2. Copy vào: fastapi-service/static/
+3. Restart: docker-compose restart fastapi
+4. Test: curl https://YOUR_NGROK_URL/zalo-verify-xxxxx.html
+5. Click Verify trên Zalo dashboard
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 KHUYẾN NGHỊ (Dựa trên tình huống của bạn)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─ ĐỂ TEST/DEVELOPMENT (Ngắn hạn) ───────────────────────────────┐
+│                                                                  │
+│  1. Follow GIẢI PHÁP 1 (Verify domain với HTML file)           │
+│     - Download file từ Zalo                                     │
+│     - Add static serving vào FastAPI                            │
+│     - Verify                                                    │
+│                                                                  │
+│  ⚠️  Nhược điểm:                                               │
+│     - Mỗi lần ngrok restart → phải verify lại                  │
+│     - Chỉ tốt cho testing                                       │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+┌─ ĐỂ PRODUCTION/DEMO (Dài hạn) ─────────────────────────────────┐
+│                                                                  │
+│  OPTION A: Ngrok Pro ($8/month)                                 │
+│    ✅ Quick setup                                               │
+│    ✅ Custom domain                                             │
+│    ✅ No re-verification                                        │
+│                                                                  │
+│  OPTION B: Deploy lên cloud                                     │
+│    ✅ Free tier: Vercel, Railway, Render                       │
+│    ✅ Auto SSL                                                  │
+│    ✅ Production ready                                          │
+│    ⚠️  Cần domain riêng                                        │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 HÀNH ĐỘNG NGAY (Step-by-Step)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ ] Bước 1: Mở link verify domain từ Zalo
+
+[ ] Bước 2: Chọn phương thức verify (HTML file recommended)
+
+[ ] Bước 3: Download verification file
+
+[ ] Bước 4: Run script setup:
+    ./setup-domain-verification.sh
+
+[ ] Bước 5: Test verification URL:
+    curl https://14fede469efd.ngrok-free.app/zalo-verify-*.html
+
+[ ] Bước 6: Click "Verify" trên Zalo dashboard
+
+[ ] Bước 7: Sau khi verify thành công → Config webhook lại
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 CẦN GIÚP?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Nếu bạn chọn GIẢI PHÁP 1 (HTML file):
+   → Tôi sẽ tạo script tự động add static serving
+
+2. Nếu bạn muốn deploy production:
+   → Tôi sẽ hướng dẫn deploy lên Vercel/Railway
+
+3. Nếu bạn muốn dùng Ngrok Pro:
+   → Tôi sẽ hướng dẫn setup custom domain
+
+
+Bạn muốn làm theo cách nào? Tôi sẽ giúp implement ngay!

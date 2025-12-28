@@ -66,7 +66,12 @@ class AIService:
     ) -> str:
         """Chat with AI"""
         if not self.client:
-            return "AI service chưa được cấu hình. Vui lòng thêm OPENAI_API_KEY."
+            error_msg = "AI service chưa được cấu hình. Vui lòng thêm OPENAI_API_KEY."
+            print(f"❌ {error_msg}")
+            return error_msg
+        
+        print(f"🤖 AI chat called with model: {settings.AI_MODEL}")
+        print(f"📝 Message: {message[:100]}...")
         
         try:
             messages = [
@@ -86,10 +91,14 @@ class AIService:
                 max_tokens=settings.AI_MAX_TOKENS,
             )
             
-            return response.choices[0].message.content
+            ai_response = response.choices[0].message.content
+            print(f"✅ AI responded: {ai_response[:100]}...")
+            return ai_response
             
         except Exception as e:
-            return f"Lỗi AI service: {str(e)}"
+            error_msg = f"Lỗi AI service: {str(e)}"
+            print(f"❌ {error_msg}")
+            return error_msg
     
     async def analyze_scam_text(self, text: str) -> Dict:
         """Analyze text for scam indicators"""

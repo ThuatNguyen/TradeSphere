@@ -167,10 +167,14 @@ Gõ /help để xem hướng dẫn này."""
             
         else:
             # AI chat
+            print(f"🤖 Calling AI chat for message: {message_text[:50]}...")
             response_text = await ai_service.chat(message_text, context=None)
+            print(f"✅ AI response: {response_text[:100]}...")
         
         # Send response
-        await zalo_service.send_text_message(user_id, response_text)
+        print(f"📤 Sending response to user {user_id}: {response_text[:100]}...")
+        send_result = await zalo_service.send_text_message(user_id, response_text)
+        print(f"📨 Send result: {send_result}")
         
         # Save outgoing message
         outgoing_msg = ZaloMessage(
